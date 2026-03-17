@@ -1,0 +1,19 @@
+# Build artifacts - don't commit
+**/__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+
+# Large binary files - generated at runtime
+books/**
+data/
+
+# Logs
+*.log
+app.log
+
+# Docker
+.dockerignore
+
+

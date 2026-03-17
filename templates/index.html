@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG - Дискретная математика</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        header {
+            background: #2c3e50;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        header h1 {
+            font-size: 1.5rem;
+        }
+        
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin-left: 1.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        
+        nav a:hover {
+            background: #34495e;
+        }
+        
+        .container {
+            flex: 1;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 1.5rem;
+            width: 100%;
+        }
+        
+        .chat-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 180px);
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+        
+        .message {
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            border-radius: 8px;
+            max-width: 90%;
+        }
+        
+        .message.user {
+            background: #3498db;
+            color: white;
+            margin-left: auto;
+        }
+        
+        .message.assistant {
+            background: transparent;
+            padding: 0;
+        }
+        
+        .result-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .result-card h3 {
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+        
+        .result-card .meta {
+            font-size: 0.85rem;
+            color: #7f8c8d;
+            margin-bottom: 1rem;
+        }
+        
+        .result-card .keywords {
+            font-size: 0.8rem;
+            color: #e74c3c;
+            margin-bottom: 1rem;
+        }
+        
+        .main-page {
+            border: 3px solid #3498db;
+            margin-bottom: 1rem;
+        }
+        
+        .main-page .page-label {
+            background: #3498db;
+        }
+        
+        .pages-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .page-thumb {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .page-thumb:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .page-thumb img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .page-label {
+            background: #34495e;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            text-align: center;
+        }
+        
+        .load-more {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .load-more button {
+            padding: 0.5rem 1rem;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: background 0.2s;
+        }
+        
+        .load-more button:hover {
+            background: #219a52;
+        }
+        
+        .load-more button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+        
+        .load-more span {
+            padding: 0 1rem;
+            color: #7f8c8d;
+            font-size: 0.85rem;
+        }
+        
+        .chat-input {
+            padding: 1rem;
+            border-top: 1px solid #ecf0f1;
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .chat-input input {
+            flex: 1;
+            padding: 0.75rem;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        
+        .chat-input button {
+            padding: 0.75rem 1.5rem;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.2s;
+        }
+        
+        .chat-input button:hover {
+            background: #2980b9;
+        }
+        
+        .chat-input button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #7f8c8d;
+        }
+        
+        .lightbox {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+        }
+        
+        .lightbox.active {
+            display: flex;
+        }
+        
+        .lightbox img {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 4px;
+        }
+        
+        .lightbox-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            color: white;
+            font-size: 2rem;
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Дискретная математика - RAG</h1>
+        <nav>
+            <a href="/">Поиск</a>
+            <a href="/simulator">Тренажёр</a>
+        </nav>
+    </header>
+    
+    <div class="container">
+        <div class="chat-container">
+            <div class="chat-messages" id="messages">
+                <div class="message assistant">
+                    Введите вопрос, и я найду соответствующие страницы учебника.
+                </div>
+            </div>
+            <div class="chat-input">
+                <input type="text" id="query" placeholder="Введите ваш вопрос..." autofocus>
+                <button id="searchBtn">Найти</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="lightbox" id="lightbox">
+        <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
+        <img id="lightbox-img" src="" alt="Страница учебника">
+    </div>
+    
+    <script>
+        const messagesDiv = document.getElementById('messages');
+        const queryInput = document.getElementById('query');
+        const searchBtn = document.getElementById('searchBtn');
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImg = document.getElementById('lightbox-img');
+        
+        let loadedPages = new Set();
+        let currentMainPage = 0;
+        let resultCounter = 0;
+        let lowestPage = 0;
+        let highestPage = 0;
+        
+        function openLightbox(src) {
+            lightboxImg.src = src;
+            lightbox.classList.add('active');
+        }
+        
+        function closeLightbox() {
+            lightbox.classList.remove('active');
+        }
+        
+        lightbox.addEventListener('click', closeLightbox);
+        
+        function getPageUrl(pageNum) {
+            return `/data/pages/page_${String(pageNum).padStart(4, '0')}.png`;
+        }
+        
+        function createPageHtml(pageNum, isMain = false) {
+            const labelClass = isMain ? 'main-page' : '';
+            const labelText = isMain ? `⭐ Основная страница ${pageNum}` : `Страница ${pageNum}`;
+            return `
+                <div class="page-thumb ${labelClass}" onclick="openLightbox('${getPageUrl(pageNum)}')">
+                    <div class="page-label">${labelText}</div>
+                    <img src="${getPageUrl(pageNum)}" alt="Страница ${pageNum}">
+                </div>
+            `;
+        }
+        
+        function addMessage(content, isUser, extra = null) {
+            const div = document.createElement('div');
+            div.className = `message ${isUser ? 'user' : 'assistant'}`;
+            
+            if (extra) {
+                resultCounter++;
+                const currentResultId = resultCounter;
+                loadedPages = new Set();
+                lowestPage = extra.mainPage;
+                highestPage = extra.mainPage;
+                currentMainPage = extra.mainPage;
+                
+                let pagesHtml = '';
+                
+                extra.pages.forEach(pageNum => {
+                    loadedPages.add(pageNum);
+                    lowestPage = Math.min(lowestPage, pageNum);
+                    highestPage = Math.max(highestPage, pageNum);
+                    const isMain = pageNum === extra.mainPage;
+                    pagesHtml += createPageHtml(pageNum, isMain);
+                });
+                
+                pagesHtml += `
+                    <div class="load-more" id="loadmore-${currentResultId}">
+                        <button onclick="loadMore(-5, ${currentResultId})" id="prev-${currentResultId}">← Предыдущие 5</button>
+                        <span id="range-${currentResultId}">стр. ${lowestPage}-${highestPage}</span>
+                        <button onclick="loadMore(5, ${currentResultId})" id="next-${currentResultId}">Следующие 5 →</button>
+                    </div>
+                `;
+                
+                div.innerHTML = `
+                    <div class="result-card" id="result-${currentResultId}">
+                        <h3>${extra.title}</h3>
+                        <div class="meta">§${extra.section} — страница ${extra.mainPage}</div>
+                        ${extra.keywords ? `<div class="keywords">Ключевые слова: ${extra.keywords.join(', ')}</div>` : ''}
+                        <div class="pages-container" id="pages-${currentResultId}">${pagesHtml}</div>
+                    </div>
+                `;
+            } else {
+                div.innerHTML = content;
+            }
+            
+            messagesDiv.appendChild(div);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        async function loadMore(offset, resultId) {
+            const container = document.getElementById(`pages-${resultId}`);
+            const loadMoreDiv = document.getElementById(`loadmore-${resultId}`);
+            const rangeSpan = document.getElementById(`range-${resultId}`);
+            
+            if (!container || !loadMoreDiv) return;
+            
+            const startPage = offset < 0 ? lowestPage + offset : highestPage + 1;
+            const pages = [];
+            for (let i = 0; i < 5; i++) {
+                const p = startPage + i;
+                if (p >= 1 && !loadedPages.has(p)) {
+                    pages.push(p);
+                }
+            }
+            
+            if (pages.length === 0) {
+                return;
+            }
+            
+            pages.forEach(p => {
+                loadedPages.add(p);
+                lowestPage = Math.min(lowestPage, p);
+                highestPage = Math.max(highestPage, p);
+            });
+            
+            const pagesArray = Array.from(loadedPages).sort((a, b) => a - b);
+            
+            let pagesHtml = '';
+            pagesArray.forEach(pageNum => {
+                const isMain = pageNum === currentMainPage;
+                pagesHtml += createPageHtml(pageNum, isMain);
+            });
+            
+            pagesHtml += `
+                <div class="load-more" id="loadmore-${resultId}">
+                    <button onclick="loadMore(-5, ${resultId})" id="prev-${resultId}">← Предыдущие 5</button>
+                    <span id="range-${resultId}">стр. ${lowestPage}-${highestPage}</span>
+                    <button onclick="loadMore(5, ${resultId})" id="next-${resultId}">Следующие 5 →</button>
+                </div>
+            `;
+            
+            container.innerHTML = pagesHtml;
+        }
+        
+        async function search() {
+            const query = queryInput.value.trim();
+            if (!query) return;
+            
+            addMessage(query, true);
+            queryInput.value = '';
+            searchBtn.disabled = true;
+            
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'loading';
+            loadingDiv.textContent = 'Поиск...';
+            messagesDiv.appendChild(loadingDiv);
+            
+            try {
+                const response = await fetch('/api/search', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({query, top_k: 1})
+                });
+                
+                const data = await response.json();
+                loadingDiv.remove();
+                
+                if (data.results && data.results.length > 0) {
+                    const result = data.results[0];
+                    currentMainPage = result.main_page;
+                    addMessage(
+                        `Найден раздел "${result.title}"`,
+                        false,
+                        {
+                            title: result.title,
+                            section: result.section,
+                            mainPage: result.main_page,
+                            pages: result.pages,
+                            thumbnails: result.thumbnails,
+                            keywords: result.keywords
+                        }
+                    );
+                } else {
+                    addMessage('По вашему запросу ничего не найдено.', false);
+                }
+            } catch (error) {
+                loadingDiv.remove();
+                addMessage('Ошибка при поиске: ' + error.message, false);
+            }
+            
+            searchBtn.disabled = false;
+            queryInput.focus();
+        }
+        
+        searchBtn.addEventListener('click', search);
+        queryInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') search();
+        });
+    </script>
+</body>
+</html>

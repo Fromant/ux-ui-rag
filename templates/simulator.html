@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тренажёр - Дискретная математика</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        header {
+            background: #2c3e50;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        header h1 {
+            font-size: 1.5rem;
+        }
+        
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin-left: 1.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        
+        nav a:hover {
+            background: #34495e;
+        }
+        
+        .container {
+            flex: 1;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            width: 100%;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .question-box {
+            background: #ecf0f1;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+        }
+        
+        .question-box h2 {
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+        }
+        
+        .question-box .meta {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+        }
+        
+        .answer-section textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 1rem;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-family: inherit;
+            resize: vertical;
+        }
+        
+        .answer-section textarea:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.2s;
+        }
+        
+        button.primary {
+            background: #3498db;
+            color: white;
+        }
+        
+        button.primary:hover {
+            background: #2980b9;
+        }
+        
+        button.secondary {
+            background: #95a5a6;
+            color: white;
+        }
+        
+        button.secondary:hover {
+            background: #7f8c8d;
+        }
+        
+        button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+        
+        .result {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            border-radius: 8px;
+        }
+        
+        .result.correct {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .result.incorrect {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .result h3 {
+            margin-bottom: 0.5rem;
+        }
+        
+        .context-section {
+            margin-top: 1.5rem;
+            display: none;
+        }
+        
+        .context-section.visible {
+            display: block;
+        }
+        
+        .context-section h4 {
+            color: #34495e;
+            margin-bottom: 0.75rem;
+            font-size: 0.95rem;
+        }
+        
+        .context-pages {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        .context-page {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .context-page:hover {
+            transform: scale(1.01);
+        }
+        
+        .context-page img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .context-page .page-label {
+            background: #34495e;
+            color: white;
+            padding: 0.2rem 0.5rem;
+            font-size: 0.7rem;
+            text-align: center;
+        }
+        
+        .start-screen {
+            text-align: center;
+            padding: 3rem;
+        }
+        
+        .start-screen h2 {
+            margin-bottom: 1rem;
+            color: #2c3e50;
+        }
+        
+        .start-screen p {
+            color: #7f8c8d;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .score {
+            text-align: center;
+            padding: 1rem;
+            background: #e8f4f8;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+        
+        .score span {
+            font-weight: bold;
+            color: #3498db;
+        }
+        
+        .lightbox {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+        }
+        
+        .lightbox.active {
+            display: flex;
+        }
+        
+        .lightbox img {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 4px;
+        }
+        
+        .lightbox-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            color: white;
+            font-size: 2rem;
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Тренажёр - Дискретная математика</h1>
+        <nav>
+            <a href="/">Поиск</a>
+            <a href="/simulator">Тренажёр</a>
+        </nav>
+    </header>
+    
+    <div class="container">
+        <div class="card">
+            <div id="startScreen" class="start-screen">
+                <h2>Проверьте свои знания</h2>
+                <p>Вам будет задан вопрос по учебнику.<br>
+                После ответа вы увидите правильные страницы с объяснением.</p>
+                <button class="primary" id="startBtn">Начать тренировку</button>
+            </div>
+            
+            <div id="questionArea" class="hidden">
+                <div class="score">Правильных ответов: <span id="scoreDisplay">0</span></div>
+                
+                <div class="question-box">
+                    <h2 id="questionText"></h2>
+                    <div class="meta" id="questionMeta"></div>
+                </div>
+                
+                <div class="answer-section">
+                    <textarea id="answerInput" placeholder="Введите ваш ответ..."></textarea>
+                    <div class="buttons">
+                        <button class="primary" id="submitBtn">Ответить</button>
+                        <button class="secondary" id="skipBtn">Пропустить</button>
+                    </div>
+                </div>
+                
+                <div id="result" class="result hidden"></div>
+                
+                <div id="contextSection" class="context-section">
+                    <h4>Правильный ответ - изучите страницы:</h4>
+                    <div class="context-pages" id="contextPages"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="lightbox" id="lightbox">
+        <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
+        <img id="lightbox-img" src="" alt="Страница учебника">
+    </div>
+    
+    <script>
+        let currentQuestionId = null;
+        let score = 0;
+        
+        const startScreen = document.getElementById('startScreen');
+        const questionArea = document.getElementById('questionArea');
+        const questionText = document.getElementById('questionText');
+        const questionMeta = document.getElementById('questionMeta');
+        const answerInput = document.getElementById('answerInput');
+        const resultDiv = document.getElementById('result');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const contextSection = document.getElementById('contextSection');
+        const contextPages = document.getElementById('contextPages');
+        
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImg = document.getElementById('lightbox-img');
+        
+        function openLightbox(src) {
+            lightboxImg.src = src;
+            lightbox.classList.add('active');
+        }
+        
+        function closeLightbox() {
+            lightbox.classList.remove('active');
+        }
+        
+        document.getElementById('startBtn').addEventListener('click', startQuiz);
+        document.getElementById('submitBtn').addEventListener('click', submitAnswer);
+        document.getElementById('skipBtn').addEventListener('click', skipQuestion);
+        
+        async function startQuiz() {
+            startScreen.classList.add('hidden');
+            questionArea.classList.remove('hidden');
+            await loadQuestion();
+        }
+        
+        async function loadQuestion() {
+            resultDiv.classList.add('hidden');
+            contextSection.classList.remove('visible');
+            contextPages.innerHTML = '';
+            answerInput.value = '';
+            answerInput.focus();
+            
+            try {
+                const response = await fetch('/api/simulator/next', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({})
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+                
+                currentQuestionId = data.question_id;
+                questionText.textContent = data.text;
+                questionMeta.textContent = `§${data.section} - ${data.section_title}`;
+                
+            } catch (error) {
+                alert('Ошибка: ' + error.message);
+            }
+        }
+        
+        async function submitAnswer() {
+            const answer = answerInput.value.trim();
+            if (!answer) {
+                alert('Введите ответ');
+                return;
+            }
+            
+            document.getElementById('submitBtn').disabled = true;
+            
+            try {
+                const response = await fetch('/api/simulator/validate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        query: currentQuestionId,
+                        top_k: answer
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.correct) {
+                    score++;
+                    scoreDisplay.textContent = score;
+                    resultDiv.className = 'result correct';
+                    resultDiv.innerHTML = `<h3>Правильно!</h3><p>${data.feedback}</p>`;
+                } else {
+                    resultDiv.className = 'result incorrect';
+                    resultDiv.innerHTML = `<h3>Изучите материал и попробуйте ещё раз</h3><p>${data.feedback}</p>`;
+                }
+                
+                if (data.answer_thumbnails && data.answer_thumbnails.length > 0) {
+                    contextPages.innerHTML = '';
+                    data.answer_thumbnails.forEach((thumb, idx) => {
+                        const pageNum = data.answer_pages[idx];
+                        const div = document.createElement('div');
+                        div.className = 'context-page';
+                        div.onclick = () => openLightbox(thumb);
+                        div.innerHTML = `
+                            <div class="page-label">Страница ${pageNum}</div>
+                            <img src="${thumb}" alt="Страница ${pageNum}">
+                        `;
+                        contextPages.appendChild(div);
+                    });
+                    contextSection.classList.add('visible');
+                }
+                
+                resultDiv.classList.remove('hidden');
+                
+                setTimeout(() => {
+                    loadQuestion();
+                }, 8000);
+                
+            } catch (error) {
+                alert('Ошибка: ' + error.message);
+            }
+            
+            document.getElementById('submitBtn').disabled = false;
+        }
+        
+        function skipQuestion() {
+            loadQuestion();
+        }
+    </script>
+</body>
+</html>
