@@ -399,8 +399,8 @@
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
-                        query: currentQuestionId,
-                        top_k: answer
+                        question_id: currentQuestionId,
+                        answer: answer
                     })
                 });
                 
@@ -434,9 +434,15 @@
                 
                 resultDiv.classList.remove('hidden');
                 
-                setTimeout(() => {
+                // Show "Next question" button instead of auto-loading
+                const nextBtn = document.createElement('button');
+                nextBtn.className = 'primary';
+                nextBtn.textContent = 'Следующий вопрос →';
+                nextBtn.onclick = () => {
+                    nextBtn.remove();
                     loadQuestion();
-                }, 8000);
+                };
+                resultDiv.appendChild(nextBtn);
                 
             } catch (error) {
                 alert('Ошибка: ' + error.message);
