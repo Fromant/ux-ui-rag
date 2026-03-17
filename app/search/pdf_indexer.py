@@ -53,8 +53,24 @@ class PDFIndexer:
         
         self.sections.sort(key=lambda x: (int(x['section_num'].split('.')[0]) if x['section_num'].split('.')[0].isdigit() else 0, x['section_num']))
         
+        self._filter_toc()
+        
         print(f"Found {len(self.sections)} sections")
         return self.sections
+    
+    def _filter_toc(self):
+        """Filter out table of contents - keep only last occurrence of each section"""
+        filtered = {}
+        
+        for section in self.sections:
+            sec_num = section['section_num']
+            filtered[sec_num] = section
+        
+        self.sections = list(filtered.values())
+        self.sections.sort(key=lambda x: (
+            int(x['section_num'].split('.')[0]) if x['section_num'].split('.')[0].isdigit() else 0, 
+            x['section_num']
+        ))
     
     def _extract_keywords(self, text: str) -> List[str]:
         words = re.findall(r'\b[А-Яа-яёЁA-Za-z]{3,}\b', text)
