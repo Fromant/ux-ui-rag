@@ -79,6 +79,37 @@
             border-color: #3498db;
         }
         
+        .jump-box {
+            padding: 0.5rem 1rem;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        
+        .jump-box input {
+            width: 70px;
+            padding: 0.4rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+        
+        .jump-box button {
+            padding: 0.4rem 0.8rem;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        
+        .jump-box button:hover {
+            background: #2980b9;
+        }
+        
         .results-list {
             flex: 1;
             overflow-y: auto;
@@ -323,6 +354,11 @@
             <div class="search-box">
                 <input type="text" id="searchInput" placeholder="Поиск по учебнику..." autofocus>
             </div>
+            <div class="jump-box">
+                <span style="font-size: 0.85rem; color: #666;">Стр.</span>
+                <input type="number" id="pageInput" placeholder="1" min="1" max="1738">
+                <button onclick="jumpToPage()">→</button>
+            </div>
             <div class="results-list" id="resultsList">
                 <div style="padding: 1rem; color: #999; text-align: center;">
                     Введите запрос для поиска
@@ -360,8 +396,9 @@
         let currentMainPage = null;
         let activeResultId = null;
         
-        const BUFFER_PAGES = 3;
-        const MAX_CACHED_PAGES = 20;
+        const BUFFER_PAGES = 10;
+        const LOAD_MORE_THRESHOLD = 15;
+        const MAX_CACHED_PAGES = 60;
         
         function getPageUrl(pageNum) {
             return `/data/pages/page_${String(pageNum).padStart(4, '0')}.png`;
@@ -370,6 +407,32 @@
         searchInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') doSearch();
         });
+        
+        document.getElementById('pageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') jumpToPage();
+        });
+        
+        function jumpToPage() {
+            const pageNum = parseInt(document.getElementById('pageInput').value);
+            if (!pageNum || pageNum < 1) return;
+            
+            currentMainPage = pageNum;
+            viewerEmpty.style.display = 'none';
+            
+            const startPage = Math.max(1, pageNum - BUFFER_PAGES);
+            const endPage = pageNum + BUFFER_PAGES;
+            
+            renderPageRange(startPage, endPage, pageNum);
+            setupIntersectionObserver();
+            
+            setTimeout(() => {
+                const target = document.querySelector(`.page-wrapper[data-page="${pageNum}"]`);
+                if (target) {
+                    target.scrollIntoView({behavior: 'smooth', block: 'center'});
+                    target.classList.add('highlighted');
+                }
+            }, 100);
+        }
         
         searchInput.addEventListener('input', debounce(doSearch, 500));
         
@@ -530,6 +593,61 @@
         
         viewer.addEventListener('scroll', debounce(() => {
             const pages = Array.from(loadedPages.keys()).sort((a, b) => a - b);
+            
+            if (pages.length === 0) return;
+            
+            const closestPage = getCurrentPage();
+            
+            if (closestPage !== currentMainPage) {
+                pageInfo.textContent = `Страница ${closestPage}`;
+                pageInfo.classList.add('visible');
+                
+                setTimeout(() => {
+                    pageInfo.classList.remove('visible');
+                }, 1500);
+                
+                currentMainPage = closestPage;
+            }
+            
+            loadMoreIfNeeded(pages);
+        }, 200));
+        
+        function loadMoreIfNeeded(currentPages) {
+            const sorted = currentPages.sort((a, b) => a - b);
+            const minPage = sorted[0];
+            const maxPage = sorted[sorted.length - 1];
+            const viewportTop = viewer.scrollTop;
+            const viewportBottom = viewportTop + viewer.clientHeight;
+            
+            const containerTop = pagesContainer.offsetTop;
+            const containerBottom = containerTop + pagesContainer.offsetHeight;
+            
+            let shouldLoadBelow = false;
+            let shouldLoadAbove = false;
+            
+            if (viewportBottom >= containerBottom - 500) {
+                shouldLoadBelow = true;
+            }
+            
+            if (viewportTop <= containerTop + 500) {
+                shouldLoadAbove = true;
+            }
+            
+            if (shouldLoadBelow) {
+                addPages(maxPage + 1, maxPage + BUFFER_PAGES + 1, false);
+            }
+            
+            if (shouldLoadAbove && minPage > 1) {
+                addPages(Math.max(1, minPage - BUFFER_PAGES), minPage - 1, true);
+            }
+            
+            currentMainPage = getCurrentPage();
+            
+            cleanupDistantPages();
+        }
+        
+        function getCurrentPage() {
+            const pages = Array.from(loadedPages.keys()).sort((a, b) => a - b);
             const viewportCenter = viewer.scrollTop + viewer.clientHeight / 2;
             
             let closestPage = pages[0];
@@ -548,30 +666,7 @@
                 }
             });
             
-            if (closestPage !== currentMainPage) {
-                pageInfo.textContent = `Страница ${closestPage}`;
-                pageInfo.classList.add('visible');
-                
-                setTimeout(() => {
-                    pageInfo.classList.remove('visible');
-                }, 1500);
-            }
-            
-            loadMoreIfNeeded(pages);
-        }, 200));
-        
-        function loadMoreIfNeeded(currentPages) {
-            const sorted = currentPages.sort((a, b) => a - b);
-            const minPage = sorted[0];
-            const maxPage = sorted[sorted.length - 1];
-            
-            if (currentMainPage > maxPage - BUFFER_PAGES) {
-                addPages(maxPage + 1, maxPage + BUFFER_PAGES + 1, false);
-            } else if (currentMainPage < minPage + BUFFER_PAGES && minPage > 1) {
-                addPages(Math.max(1, minPage - BUFFER_PAGES), minPage - 1, true);
-            }
-            
-            cleanupDistantPages();
+            return closestPage;
         }
         
         function addPages(startPage, endPage, insertBefore) {
