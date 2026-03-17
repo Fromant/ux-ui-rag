@@ -15,8 +15,6 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: #f5f5f5;
             min-height: 100vh;
-            display: flex;
-            flex-direction: column;
         }
         
         header {
@@ -26,16 +24,20 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
         
         header h1 {
-            font-size: 1.5rem;
+            font-size: 1.3rem;
         }
         
         nav a {
             color: white;
             text-decoration: none;
-            margin-left: 1.5rem;
+            margin-left: 1rem;
             padding: 0.5rem 1rem;
             border-radius: 4px;
             transition: background 0.2s;
@@ -45,188 +47,217 @@
             background: #34495e;
         }
         
-        .container {
-            flex: 1;
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 1.5rem;
-            width: 100%;
+        .main-container {
+            display: flex;
+            height: calc(100vh - 60px);
         }
         
-        .chat-container {
+        .sidebar {
+            width: 320px;
             background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-right: 1px solid #ddd;
             display: flex;
             flex-direction: column;
-            height: calc(100vh - 180px);
+            overflow: hidden;
         }
         
-        .chat-messages {
+        .search-box {
+            padding: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .search-box input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+        
+        .search-box input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        
+        .results-list {
             flex: 1;
             overflow-y: auto;
-            padding: 1.5rem;
+            padding: 0.5rem;
         }
         
-        .message {
-            margin-bottom: 1.5rem;
-            padding: 1rem;
-            border-radius: 8px;
-            max-width: 90%;
-        }
-        
-        .message.user {
-            background: #3498db;
-            color: white;
-            margin-left: auto;
-        }
-        
-        .message.assistant {
-            background: transparent;
-            padding: 0;
-        }
-        
-        .result-card {
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 1rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        
-        .result-card h3 {
-            color: #2c3e50;
+        .result-item {
+            padding: 0.75rem;
+            border-radius: 6px;
+            cursor: pointer;
             margin-bottom: 0.5rem;
-            font-size: 1.1rem;
+            border: 2px solid transparent;
+            transition: all 0.2s;
         }
         
-        .result-card .meta {
-            font-size: 0.85rem;
-            color: #7f8c8d;
-            margin-bottom: 1rem;
+        .result-item:hover {
+            background: #f8f9fa;
         }
         
-        .result-card .keywords {
+        .result-item.active {
+            border-color: #3498db;
+            background: #e8f4fc;
+        }
+        
+        .result-item h4 {
+            font-size: 0.95rem;
+            color: #2c3e50;
+            margin-bottom: 0.25rem;
+        }
+        
+        .result-item .meta {
             font-size: 0.8rem;
+            color: #7f8c8d;
+        }
+        
+        .result-item .keywords {
+            font-size: 0.7rem;
             color: #e74c3c;
-            margin-bottom: 1rem;
+            margin-top: 0.25rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         
-        .main-page {
-            border: 3px solid #3498db;
-            margin-bottom: 1rem;
+        .viewer {
+            flex: 1;
+            overflow-y: auto;
+            background: #333;
+            padding: 2rem;
+            position: relative;
         }
         
-        .main-page .page-label {
-            background: #3498db;
+        .viewer-empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #999;
+            font-size: 1.2rem;
         }
         
         .pages-container {
+            max-width: 800px;
+            margin: 0 auto;
             display: flex;
             flex-direction: column;
             gap: 1rem;
-        }
-        
-        .page-thumb {
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            overflow: hidden;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        
-        .page-thumb:hover {
-            transform: scale(1.02);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
-        
-        .page-thumb img {
-            width: 100%;
-            height: auto;
-            display: block;
-        }
-        
-        .page-label {
-            background: #34495e;
-            color: white;
-            padding: 0.25rem 0.5rem;
-            font-size: 0.75rem;
-            text-align: center;
-        }
-        
-        .load-more {
-            display: flex;
-            gap: 0.5rem;
-            margin-top: 1rem;
-            justify-content: center;
             align-items: center;
         }
         
-        .load-more button {
-            padding: 0.5rem 1rem;
-            background: #27ae60;
-            color: white;
-            border: none;
+        .page-wrapper {
+            position: relative;
+            background: white;
             border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.85rem;
-            transition: background 0.2s;
-        }
-        
-        .load-more button:hover {
-            background: #219a52;
-        }
-        
-        .load-more button:disabled {
-            background: #bdc3c7;
-            cursor: not-allowed;
-        }
-        
-        .load-more span {
-            padding: 0 1rem;
-            color: #7f8c8d;
-            font-size: 0.85rem;
-        }
-        
-        .chat-input {
-            padding: 1rem;
-            border-top: 1px solid #ecf0f1;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+            min-height: 200px;
             display: flex;
-            gap: 0.5rem;
+            align-items: center;
+            justify-content: center;
         }
         
-        .chat-input input {
-            flex: 1;
-            padding: 0.75rem;
-            border: 1px solid #bdc3c7;
+        .page-wrapper.visible {
+            transform: scale(1);
+        }
+        
+        .page-wrapper.highlighted {
+            box-shadow: 0 0 0 4px #3498db, 0 8px 30px rgba(0,0,0,0.4);
+            transform: scale(1.02);
+            z-index: 10;
+        }
+        
+        .page-wrapper img {
+            display: block;
+            max-width: 100%;
+            height: auto;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .page-wrapper img.loaded {
+            opacity: 1;
+        }
+        
+        .page-wrapper .page-number {
+            position: absolute;
+            bottom: 0.5rem;
+            right: 0.5rem;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 0.25rem 0.5rem;
             border-radius: 4px;
-            font-size: 1rem;
+            font-size: 0.75rem;
         }
         
-        .chat-input button {
-            padding: 0.75rem 1.5rem;
+        .page-wrapper .loading-placeholder {
+            position: absolute;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .page-skeleton {
+            width: 600px;
+            height: 800px;
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 4px;
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        
+        .scroll-indicator {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
             background: #3498db;
             color: white;
-            border: none;
-            border-radius: 4px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
-            font-size: 1rem;
-            transition: background 0.2s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 1.5rem;
         }
         
-        .chat-input button:hover {
+        .scroll-indicator.visible {
+            opacity: 1;
+        }
+        
+        .scroll-indicator:hover {
             background: #2980b9;
         }
         
-        .chat-input button:disabled {
-            background: #bdc3c7;
-            cursor: not-allowed;
+        .page-info {
+            position: fixed;
+            bottom: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            opacity: 0;
+            transition: opacity 0.3s;
         }
         
-        .loading {
-            text-align: center;
-            padding: 2rem;
-            color: #7f8c8d;
+        .page-info.visible {
+            opacity: 1;
         }
         
         .lightbox {
@@ -236,7 +267,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.9);
+            background: rgba(0,0,0,0.95);
             z-index: 1000;
             justify-content: center;
             align-items: center;
@@ -248,8 +279,8 @@
         }
         
         .lightbox img {
-            max-width: 90%;
-            max-height: 90%;
+            max-width: 95%;
+            max-height: 95%;
             border-radius: 4px;
         }
         
@@ -258,53 +289,219 @@
             top: 1rem;
             right: 1rem;
             color: white;
-            font-size: 2rem;
+            font-size: 2.5rem;
             cursor: pointer;
             background: none;
             border: none;
+        }
+        
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                height: 40vh;
+            }
+            .viewer {
+                height: 60vh;
+            }
         }
     </style>
 </head>
 <body>
     <header>
-        <h1>Дискретная математика - RAG</h1>
+        <h1>Дискретная математика</h1>
         <nav>
             <a href="/">Поиск</a>
             <a href="/simulator">Тренажёр</a>
         </nav>
     </header>
     
-    <div class="container">
-        <div class="chat-container">
-            <div class="chat-messages" id="messages">
-                <div class="message assistant">
-                    Введите вопрос, и я найду соответствующие страницы учебника.
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Поиск по учебнику..." autofocus>
+            </div>
+            <div class="results-list" id="resultsList">
+                <div style="padding: 1rem; color: #999; text-align: center;">
+                    Введите запрос для поиска
                 </div>
             </div>
-            <div class="chat-input">
-                <input type="text" id="query" placeholder="Введите ваш вопрос..." autofocus>
-                <button id="searchBtn">Найти</button>
+        </div>
+        
+        <div class="viewer" id="viewer">
+            <div class="viewer-empty" id="viewerEmpty">
+                Начните поиск, чтобы открыть страницы учебника
             </div>
+            <div class="pages-container" id="pagesContainer"></div>
         </div>
     </div>
     
+    <div class="page-info" id="pageInfo"></div>
+    
     <div class="lightbox" id="lightbox">
         <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
-        <img id="lightbox-img" src="" alt="Страница учебника">
+        <img id="lightboxImg" src="" alt="Страница">
     </div>
     
     <script>
-        const messagesDiv = document.getElementById('messages');
-        const queryInput = document.getElementById('query');
-        const searchBtn = document.getElementById('searchBtn');
+        const searchInput = document.getElementById('searchInput');
+        const resultsList = document.getElementById('resultsList');
+        const viewer = document.getElementById('viewer');
+        const viewerEmpty = document.getElementById('viewerEmpty');
+        const pagesContainer = document.getElementById('pagesContainer');
+        const pageInfo = document.getElementById('pageInfo');
         const lightbox = document.getElementById('lightbox');
-        const lightboxImg = document.getElementById('lightbox-img');
+        const lightboxImg = document.getElementById('lightboxImg');
         
-        let loadedPages = new Set();
-        let currentMainPage = 0;
-        let resultCounter = 0;
-        let lowestPage = 0;
-        let highestPage = 0;
+        let searchResults = [];
+        let loadedPages = new Map();
+        let currentMainPage = null;
+        let activeResultId = null;
+        
+        const BUFFER_PAGES = 3;
+        const MAX_CACHED_PAGES = 20;
+        
+        function getPageUrl(pageNum) {
+            return `/data/pages/page_${String(pageNum).padStart(4, '0')}.png`;
+        }
+        
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') doSearch();
+        });
+        
+        searchInput.addEventListener('input', debounce(doSearch, 500));
+        
+        function debounce(fn, delay) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => fn.apply(this, args), delay);
+            };
+        }
+        
+        async function doSearch() {
+            const query = searchInput.value.trim();
+            if (!query) {
+                resultsList.innerHTML = '<div style="padding: 1rem; color: #999; text-align: center;">Введите запрос для поиска</div>';
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/search', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({query, top_k: 10})
+                });
+                
+                const data = await response.json();
+                searchResults = data.results || [];
+                renderResults();
+            } catch (error) {
+                console.error('Search error:', error);
+            }
+        }
+        
+        function renderResults() {
+            if (searchResults.length === 0) {
+                resultsList.innerHTML = '<div style="padding: 1rem; color: #999; text-align: center;">Ничего не найдено</div>';
+                return;
+            }
+            
+            resultsList.innerHTML = searchResults.map((r, idx) => `
+                <div class="result-item ${idx === 0 ? 'active' : ''}" onclick="showPages(${r.main_page}, ${idx})">
+                    <h4>${r.title}</h4>
+                    <div class="meta">§${r.section} — стр. ${r.main_page}</div>
+                    <div class="keywords">${r.keywords.slice(0, 5).join(', ')}</div>
+                </div>
+            `).join('');
+            
+            if (searchResults.length > 0) {
+                showPages(searchResults[0].main_page, 0);
+            }
+        }
+        
+        function showPages(mainPage, resultIdx) {
+            currentMainPage = mainPage;
+            activeResultId = resultIdx;
+            
+            document.querySelectorAll('.result-item').forEach((el, idx) => {
+                el.classList.toggle('active', idx === resultIdx);
+            });
+            
+            viewerEmpty.style.display = 'none';
+            
+            const startPage = Math.max(1, mainPage - BUFFER_PAGES);
+            const endPage = mainPage + BUFFER_PAGES;
+            
+            renderPageRange(startPage, endPage, mainPage);
+            
+            setupIntersectionObserver();
+            
+            setTimeout(() => {
+                const highlighted = document.querySelector('.page-wrapper.highlighted');
+                if (highlighted) {
+                    highlighted.scrollIntoView({behavior: 'smooth', block: 'center'});
+                }
+            }, 100);
+        }
+        
+        function renderPageRange(startPage, endPage, highlightPage) {
+            loadedPages.clear();
+            pagesContainer.innerHTML = '';
+            
+            for (let page = startPage; page <= endPage; page++) {
+                createPageElement(page, page === highlightPage);
+            }
+            
+            updatePageInfo();
+        }
+        
+        function createPageElement(pageNum, isHighlighted) {
+            const wrapper = document.createElement('div');
+            wrapper.className = `page-wrapper ${isHighlighted ? 'highlighted' : ''}`;
+            wrapper.dataset.page = pageNum;
+            
+            wrapper.innerHTML = `
+                <div class="page-skeleton"></div>
+                <img data-src="${getPageUrl(pageNum)}" alt="Страница ${pageNum}">
+                <div class="page-number">${pageNum}</div>
+            `;
+            
+            wrapper.addEventListener('click', () => openLightbox(getPageUrl(pageNum)));
+            
+            pagesContainer.appendChild(wrapper);
+            loadedPages.set(pageNum, wrapper);
+        }
+        
+        function setupIntersectionObserver() {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    const pageNum = parseInt(entry.target.dataset.page);
+                    const img = entry.target.querySelector('img');
+                    const skeleton = entry.target.querySelector('.page-skeleton');
+                    
+                    if (entry.isIntersecting) {
+                        if (img && img.dataset.src && !img.src) {
+                            img.src = img.dataset.src;
+                            img.onload = () => {
+                                img.classList.add('loaded');
+                                if (skeleton) skeleton.remove();
+                            };
+                        }
+                    }
+                });
+            }, {
+                root: viewer,
+                rootMargin: '200px',
+                threshold: 0.1
+            });
+            
+            document.querySelectorAll('.page-wrapper').forEach(el => {
+                observer.observe(el);
+            });
+        }
         
         function openLightbox(src) {
             lightboxImg.src = src;
@@ -315,167 +512,152 @@
             lightbox.classList.remove('active');
         }
         
-        lightbox.addEventListener('click', closeLightbox);
+        lightbox.addEventListener('click', (e) => {
+            if (e.target === lightbox) closeLightbox();
+        });
         
-        function getPageUrl(pageNum) {
-            return `/data/pages/page_${String(pageNum).padStart(4, '0')}.png`;
+        function updatePageInfo() {
+            if (loadedPages.size > 0) {
+                const pages = Array.from(loadedPages.keys()).sort((a, b) => a - b);
+                pageInfo.textContent = `Страницы ${pages[0]} - ${pages[pages.length - 1]}`;
+                pageInfo.classList.add('visible');
+                
+                setTimeout(() => {
+                    pageInfo.classList.remove('visible');
+                }, 2000);
+            }
         }
         
-        function createPageHtml(pageNum, isMain = false) {
-            const labelClass = isMain ? 'main-page' : '';
-            const labelText = isMain ? `⭐ Основная страница ${pageNum}` : `Страница ${pageNum}`;
-            return `
-                <div class="page-thumb ${labelClass}" onclick="openLightbox('${getPageUrl(pageNum)}')">
-                    <div class="page-label">${labelText}</div>
-                    <img src="${getPageUrl(pageNum)}" alt="Страница ${pageNum}">
-                </div>
-            `;
-        }
-        
-        function addMessage(content, isUser, extra = null) {
-            const div = document.createElement('div');
-            div.className = `message ${isUser ? 'user' : 'assistant'}`;
+        viewer.addEventListener('scroll', debounce(() => {
+            const pages = Array.from(loadedPages.keys()).sort((a, b) => a - b);
+            const viewportCenter = viewer.scrollTop + viewer.clientHeight / 2;
             
-            if (extra) {
-                resultCounter++;
-                const currentResultId = resultCounter;
-                loadedPages = new Set();
-                lowestPage = extra.mainPage;
-                highestPage = extra.mainPage;
-                currentMainPage = extra.mainPage;
+            let closestPage = pages[0];
+            let minDist = Infinity;
+            
+            pages.forEach(page => {
+                const el = loadedPages.get(page);
+                const rect = el.getBoundingClientRect();
+                const viewerRect = viewer.getBoundingClientRect();
+                const elCenter = rect.top - viewerRect.top + rect.height / 2;
+                const dist = Math.abs(elCenter - viewer.clientHeight / 2);
                 
-                let pagesHtml = '';
+                if (dist < minDist) {
+                    minDist = dist;
+                    closestPage = page;
+                }
+            });
+            
+            if (closestPage !== currentMainPage) {
+                pageInfo.textContent = `Страница ${closestPage}`;
+                pageInfo.classList.add('visible');
                 
-                extra.pages.forEach(pageNum => {
-                    loadedPages.add(pageNum);
-                    lowestPage = Math.min(lowestPage, pageNum);
-                    highestPage = Math.max(highestPage, pageNum);
-                    const isMain = pageNum === extra.mainPage;
-                    pagesHtml += createPageHtml(pageNum, isMain);
-                });
-                
-                pagesHtml += `
-                    <div class="load-more" id="loadmore-${currentResultId}">
-                        <button onclick="loadMore(-5, ${currentResultId})" id="prev-${currentResultId}">← Предыдущие 5</button>
-                        <span id="range-${currentResultId}">стр. ${lowestPage}-${highestPage}</span>
-                        <button onclick="loadMore(5, ${currentResultId})" id="next-${currentResultId}">Следующие 5 →</button>
-                    </div>
-                `;
-                
-                div.innerHTML = `
-                    <div class="result-card" id="result-${currentResultId}">
-                        <h3>${extra.title}</h3>
-                        <div class="meta">§${extra.section} — страница ${extra.mainPage}</div>
-                        ${extra.keywords ? `<div class="keywords">Ключевые слова: ${extra.keywords.join(', ')}</div>` : ''}
-                        <div class="pages-container" id="pages-${currentResultId}">${pagesHtml}</div>
-                    </div>
-                `;
+                setTimeout(() => {
+                    pageInfo.classList.remove('visible');
+                }, 1500);
+            }
+            
+            loadMoreIfNeeded(pages);
+        }, 200));
+        
+        function loadMoreIfNeeded(currentPages) {
+            const sorted = currentPages.sort((a, b) => a - b);
+            const minPage = sorted[0];
+            const maxPage = sorted[sorted.length - 1];
+            
+            if (currentMainPage > maxPage - BUFFER_PAGES) {
+                addPages(maxPage + 1, maxPage + BUFFER_PAGES + 1, false);
+            } else if (currentMainPage < minPage + BUFFER_PAGES && minPage > 1) {
+                addPages(Math.max(1, minPage - BUFFER_PAGES), minPage - 1, true);
+            }
+            
+            cleanupDistantPages();
+        }
+        
+        function addPages(startPage, endPage, insertBefore) {
+            const fragment = document.createDocumentFragment();
+            
+            for (let page = startPage; page <= endPage; page++) {
+                if (!loadedPages.has(page)) {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'page-wrapper';
+                    wrapper.dataset.page = page;
+                    
+                    wrapper.innerHTML = `
+                        <div class="page-skeleton"></div>
+                        <img data-src="${getPageUrl(page)}" alt="Страница ${page}">
+                        <div class="page-number">${page}</div>
+                    `;
+                    
+                    wrapper.addEventListener('click', () => openLightbox(getPageUrl(page)));
+                    
+                    if (insertBefore) {
+                        fragment.prepend(wrapper);
+                    } else {
+                        fragment.appendChild(wrapper);
+                    }
+                    
+                    loadedPages.set(page, wrapper);
+                }
+            }
+            
+            if (insertBefore) {
+                pagesContainer.prepend(fragment);
             } else {
-                div.innerHTML = content;
+                pagesContainer.appendChild(fragment);
             }
             
-            messagesDiv.appendChild(div);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        }
-        
-        async function loadMore(offset, resultId) {
-            const container = document.getElementById(`pages-${resultId}`);
-            const loadMoreDiv = document.getElementById(`loadmore-${resultId}`);
-            const rangeSpan = document.getElementById(`range-${resultId}`);
-            
-            if (!container || !loadMoreDiv) return;
-            
-            const startPage = offset < 0 ? lowestPage + offset : highestPage + 1;
-            const pages = [];
-            for (let i = 0; i < 5; i++) {
-                const p = startPage + i;
-                if (p >= 1 && !loadedPages.has(p)) {
-                    pages.push(p);
-                }
-            }
-            
-            if (pages.length === 0) {
-                return;
-            }
-            
-            pages.forEach(p => {
-                loadedPages.add(p);
-                lowestPage = Math.min(lowestPage, p);
-                highestPage = Math.max(highestPage, p);
-            });
-            
-            const pagesArray = Array.from(loadedPages).sort((a, b) => a - b);
-            
-            let pagesHtml = '';
-            pagesArray.forEach(pageNum => {
-                const isMain = pageNum === currentMainPage;
-                pagesHtml += createPageHtml(pageNum, isMain);
-            });
-            
-            pagesHtml += `
-                <div class="load-more" id="loadmore-${resultId}">
-                    <button onclick="loadMore(-5, ${resultId})" id="prev-${resultId}">← Предыдущие 5</button>
-                    <span id="range-${resultId}">стр. ${lowestPage}-${highestPage}</span>
-                    <button onclick="loadMore(5, ${resultId})" id="next-${resultId}">Следующие 5 →</button>
-                </div>
-            `;
-            
-            container.innerHTML = pagesHtml;
-        }
-        
-        async function search() {
-            const query = queryInput.value.trim();
-            if (!query) return;
-            
-            addMessage(query, true);
-            queryInput.value = '';
-            searchBtn.disabled = true;
-            
-            const loadingDiv = document.createElement('div');
-            loadingDiv.className = 'loading';
-            loadingDiv.textContent = 'Поиск...';
-            messagesDiv.appendChild(loadingDiv);
-            
-            try {
-                const response = await fetch('/api/search', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({query, top_k: 1})
-                });
-                
-                const data = await response.json();
-                loadingDiv.remove();
-                
-                if (data.results && data.results.length > 0) {
-                    const result = data.results[0];
-                    currentMainPage = result.main_page;
-                    addMessage(
-                        `Найден раздел "${result.title}"`,
-                        false,
-                        {
-                            title: result.title,
-                            section: result.section,
-                            mainPage: result.main_page,
-                            pages: result.pages,
-                            thumbnails: result.thumbnails,
-                            keywords: result.keywords
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    const pageNum = parseInt(entry.target.dataset.page);
+                    const img = entry.target.querySelector('img');
+                    const skeleton = entry.target.querySelector('.page-skeleton');
+                    
+                    if (entry.isIntersecting) {
+                        if (img && img.dataset.src && !img.src) {
+                            img.src = img.dataset.src;
+                            img.onload = () => {
+                                img.classList.add('loaded');
+                                if (skeleton) skeleton.remove();
+                            };
                         }
-                    );
-                } else {
-                    addMessage('По вашему запросу ничего не найдено.', false);
-                }
-            } catch (error) {
-                loadingDiv.remove();
-                addMessage('Ошибка при поиске: ' + error.message, false);
-            }
+                    }
+                });
+            }, {
+                root: viewer,
+                rootMargin: '200px',
+                threshold: 0.1
+            });
             
-            searchBtn.disabled = false;
-            queryInput.focus();
+            for (let page = startPage; page <= endPage; page++) {
+                const wrapper = loadedPages.get(page);
+                if (wrapper) observer.observe(wrapper);
+            }
         }
         
-        searchBtn.addEventListener('click', search);
-        queryInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') search();
+        function cleanupDistantPages() {
+            const pages = Array.from(loadedPages.keys()).sort((a, b) => a - b);
+            const keepPages = [];
+            
+            pages.forEach(page => {
+                if (Math.abs(page - currentMainPage) <= MAX_CACHED_PAGES / 2) {
+                    keepPages.push(page);
+                }
+            });
+            
+            pages.forEach(page => {
+                if (!keepPages.includes(page)) {
+                    const wrapper = loadedPages.get(page);
+                    if (wrapper) {
+                        wrapper.remove();
+                        loadedPages.delete(page);
+                    }
+                }
+            });
+        }
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeLightbox();
         });
     </script>
 </body>
