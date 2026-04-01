@@ -159,13 +159,35 @@ async def next_question(req: SimulatorRequest):
         return JSONResponse({"error": "No questions available"}, status_code=404)
     
     section = random.choice(available)
+
+    # Generate question based on section title
+    # Different templates work better for different types of titles
+    title = section['title']
     
+    # Question templates that work well with Russian technical titles
     question_templates = [
-        f"Что вы знаете о {section['title']}?",
-        f"Расскажите о {section['title']}.",
-        f"Какие ключевые понятия в разделе {section['title']}?",
-        f"Дайте характеристику {section['title']}.",
+        f"Что вы знаете о \"{title}\"?",
+        f"Расскажите о \"{title}\".",
+        f"Дайте определение: {title}.",
+        f"Объясните понятие \"{title}\".",
     ]
+    
+    # For titles that look like definitions or properties, use simpler templates
+    if any(word in title.lower() for word in ['определение', 'свойство', 'признак', 'критерий', 'теорема']):
+        question_templates = [
+            f"Сформулируйте: {title}.",
+            f"Что утверждает {title.lower()}?",
+            f"Объясните: {title}.",
+        ]
+    
+    # For titles about algorithms or methods
+    if any(word in title.lower() for word in ['алгоритм', 'метод', 'способ', 'процедура']):
+        question_templates = [
+            f"Опишите алгоритм: {title}.",
+            f"В чём суть метода \"{title}\"?",
+            f"Как работает {title.lower()}?",
+        ]
+    
     question_text = random.choice(question_templates)
     
     page = section['page']

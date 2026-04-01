@@ -2,7 +2,7 @@ import re
 import json
 import os
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import fitz
 
 
@@ -10,51 +10,204 @@ class PDFIndexer:
     def __init__(self, pdf_path: str):
         self.pdf_path = pdf_path
         self.sections: List[Dict[str, Any]] = []
+
+    def clean_title(self, title: str) -> Optional[str]:
+        """Clean and validate section title."""
+        if not title:
+            return None
         
+        # Remove part indicators like (2/2), (3/3), etc. (including incomplete ones)
+        title = re.sub(r'\s*\(\d+/\d*\s*$', '', title)
+        title = re.sub(r'\s*\(\d+/\d+\)\s*', '', title)
+        
+        # Remove trailing punctuation that indicates sentence, not title
+        title = title.rstrip('.!?;:')
+        
+        # Remove trailing hyphenation (incomplete words)
+        title = re.sub(r'-\s*$', '', title)
+        title = re.sub(r'-\s*\n', ' ', title)  # Join hyphenated line breaks
+        
+        # Remove content after colon if it looks like a subtitle or explanation
+        if ':' in title:
+            parts = title.split(':')
+            if len(parts[0].strip()) > 3 and len(parts[0].strip()) < 100:
+                title = parts[0].strip()
+        
+        # Remove content after comma if title is already long enough
+        if ',' in title and len(title) > 60:
+            parts = title.split(',')
+            if len(parts[0].strip()) > 3:
+                title = parts[0].strip()
+        
+        # Remove leading/trailing whitespace and normalize internal spaces
+        title = ' '.join(title.split())
+        
+        # Must start with uppercase letter
+        if not title[0].isupper():
+            return None
+        
+        # Filter out bad titles
+        # 1. Too short after cleaning
+        if len(title) < 3:
+            return None
+        
+        # 2. Too long (likely captured too much text)
+        if len(title) > 100:
+            return None
+        
+        # 3. Ends with common sentence fragments
+        bad_endings = [
+            'и далее', 'и т.д', 'и т.п', 'см.', 'см также',
+            'и следствия', 'по первому', 'по второму', 'если нужно',
+            'указываются', 'требуется', 'приведённом', 'данной', 'этой',
+            'этом', 'другой', 'только', 'было', 'будет', 'является',
+            'есть биекция', 'значит', 'значит,', 'и значит',
+            'равно c', 'равно с', 'не имеет значения', 'симметрично',
+        ]
+        title_lower = title.lower()
+        for bad in bad_endings:
+            if title_lower.endswith(bad):
+                return None
+        
+        # 3b. Starts with sentence-like patterns
+        bad_starts = [
+            'в приведённом', 'в данном', 'в этом', 'на самом деле',
+            'следует отметить', 'отметим что', 'заметим что',
+            'рассмотрим', 'покажем что', 'докажем что',
+            'требуется ', 'следует ', 'значит ', 'поэтому ',
+        ]
+        for bad in bad_starts:
+            if title_lower.startswith(bad):
+                return None
+        
+        # 3c. Contains verb patterns that indicate sentence not title
+        sentence_patterns = [
+            r'требуется больше', r'не имеет значения', r'является',
+            r'следует что', r'следует, что', r'значит,',
+        ]
+        for pattern in sentence_patterns:
+            if re.search(pattern, title_lower):
+                return None
+        
+        # 4. Contains obvious non-title patterns
+        bad_patterns = [
+            r'^и\s+\w',  # Starts with "и "
+            r'^для\s+\w',  # Starts with "для "
+            r'^при\s+\w',  # Starts with "при "
+            r'^в\s+\w',  # Starts with "в "
+            r'^на\s+\w',  # Starts with "на "
+            r'^с\s+\w',  # Starts with "с " (but not specific cases)
+            r'^что\s+\w',  # Starts with "что "
+            r'^как\s+\w',  # Starts with "как "
+            r'^[A-Z]\d\s*⊂',  # Math expressions like "R2 ⊂R"
+            r'^[A-Z]\d\s*[=<>]',  # Math expressions with =, <, >
+            r'⊂',  # Contains subset symbol
+            r'◦',  # Contains composition symbol
+            r'\(\d{4}',  # Contains year like (1826
+            r'[A-Z][a-z]+ [A-Z][a-z]+ [A-Z]',  # Western name pattern "Georg Friedrich B"
+        ]
+        for pattern in bad_patterns:
+            if re.search(pattern, title):
+                return None
+        
+        # 5. Has incomplete words (ending with hyphen mid-word or truncated)
+        if re.search(r'\w-\s*$', title):
+            return None
+        
+        # Check for truncated words at end of title
+        # Russian words typically don't end in certain consonant clusters or specific letters
+        truncated_endings = (
+            'е', 'и', 'о', 'ы', 'ю', 'я',  # vowels that indicate cut-off
+            'ле', 'ре', 'се', 'те', 'че', 'ше', 'ще',  # consonant + е
+            'ли', 'ри', 'си', 'ти', 'чи', 'ши', 'щи',  # consonant + и
+        )
+        if title.endswith(truncated_endings) and len(title) < 30:
+            # Check if last word looks truncated
+            words = title.split()
+            if words:
+                last_word = words[-1].lower()
+                # If last word is short and ends with vowel, likely truncated
+                if len(last_word) < 8 and last_word.endswith(('е', 'и', 'о', 'ы', 'ю', 'я')):
+                    # Additional check: if it doesn't look like a complete Russian word
+                    if not any(last_word.endswith(suffix) for suffix in ['ие', 'ием', 'ию', 'ия', 'иям', 'иях']):
+                        return None
+        
+        # 6. Is just a name without context (likely a random capture)
+        # Single word titles that are all caps or surname pattern
+        if ' ' not in title:
+            # Check if it's all uppercase (like "РИМАН", "ФЛОЙД")
+            if title.isupper() and len(title) < 15:
+                return None
+            
+            # Check if it matches surname pattern
+            if re.match(r'^[А-ЯЁ][а-яё]+$', title):
+                surnames = ['риман', 'галуа', 'бине', 'капрекар', 'флойд', 'дейкстра', 
+                           'карно', 'хейкен', 'варшалл', 'эйлер', 'бернсайд', 'кэли',
+                           'пуанкаре', 'шредер', 'кантор', 'дедекинд', 'хаусдорф']
+                if title.lower() in surnames:
+                    return None
+        
+        # 6b. Single generic word titles (too vague)
+        generic_single = ['вычисление', 'определение', 'понятие', 'раздел', 'часть', 'тема', 
+                         'пример', 'следствие', 'замечание', 'утверждение', 'предложение']
+        if title.lower() in generic_single and ' ' not in title:
+            return None
+        
+        # 7. Contains newline artifacts
+        if '\n' in title or '\r' in title:
+            return None
+            
+        return title[:100]
+
     def extract_sections(self):
         print("Extracting sections from PDF...")
         doc = fitz.open(self.pdf_path)
         print(f"PDF has {len(doc)} pages")
-        
+
+        # Pattern: section number followed by title on the same line
+        # Title starts with capital letter, stops at newline or certain punctuation
         section_pattern = re.compile(
-            r'(\d+\.\d+(?:\.\d+)?)\.?\s*([А-Яа-яёЁA-Z][^\n]{2,120})',
+            r'(\d+\.\d+(?:\.\d+)?)\.?\s+([А-Яа-яёЁA-Z][^\n\r.!?:;]{2,150})',
             re.MULTILINE
         )
-        
+
         for page_num in range(len(doc)):
             if page_num % 100 == 0:
                 print(f"Processing page {page_num + 1}/{len(doc)}")
-            
+
             page = doc[page_num]
             text = page.get_text("text")
-            
+
             if not text:
                 continue
-            
+
             matches = list(section_pattern.finditer(text))
-            
+
             for match in matches:
                 section_num = match.group(1)
-                section_title = match.group(2).strip()[:100]
+                raw_title = match.group(2).strip()
                 
-                if len(section_title) < 3:
+                # Clean and validate the title
+                section_title = self.clean_title(raw_title)
+                
+                if not section_title:
                     continue
-                
+
                 keywords = self._extract_keywords(text[:2000])
-                
+
                 self.sections.append({
                     'section_num': section_num,
                     'title': section_title,
                     'page': page_num + 1,
                     'keywords': keywords
                 })
-        
+
         doc.close()
-        
+
         self.sections.sort(key=lambda x: (int(x['section_num'].split('.')[0]) if x['section_num'].split('.')[0].isdigit() else 0, x['section_num']))
-        
+
         self._filter_toc()
-        
+
         print(f"Found {len(self.sections)} sections")
         return self.sections
     
