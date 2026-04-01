@@ -183,7 +183,7 @@ async def next_question(req: SimulatorRequest):
 async def validate_answer(req: ValidateRequest):
     question_id = req.question_id
     section = next((s for s in sections_index if s['section_num'] == question_id), None)
-    
+
     if not section:
         return JSONResponse({
             "valid": True,
@@ -191,18 +191,39 @@ async def validate_answer(req: ValidateRequest):
             "feedback": "Раздел не найден",
             "correct_answer": ""
         })
-    
+
     page = section['page']
     answer_pages = get_page_range(page)
+
+    # Keyword matching: check if answer contains keywords from the section
+    answer_lower = req.answer.lower()
+    section_keywords = section.get('keywords', [])
+    title_words = section['title'].lower().split()
     
-    is_correct = len(req.answer) > 10
+    # Count how many keywords/title words are in the answer
+    matched_keywords = []
+    for keyword in section_keywords:
+        if keyword.lower() in answer_lower:
+            matched_keywords.append(keyword)
     
+    for title_word in title_words:
+        if len(title_word) > 3 and title_word not in matched_keywords and title_word in answer_lower:
+            matched_keywords.append(title_word)
+    
+    # Calculate match ratio
+    total_terms = len(section_keywords) + len([w for w in title_words if len(w) > 3])
+    match_count = len(matched_keywords)
+    
+    # Consider correct if at least 30% of keywords matched or answer is substantial (20+ chars) with some matches
+    is_correct = (total_terms > 0 and match_count / total_terms >= 0.3) or (len(req.answer) >= 20 and match_count >= 1)
+
     return JSONResponse({
         "valid": True,
         "correct": is_correct,
         "feedback": "Отличный ответ!" if is_correct else "Попробуйте еще раз изучить материал.",
         "correct_answer": section['title'],
         "section_title": section['title'],
+        "matched_keywords": matched_keywords,
         "answer_pages": answer_pages,
         "answer_thumbnails": [f"/data/pages/page_{p:04d}.png" for p in answer_pages]
     })

@@ -395,7 +395,8 @@
         let loadedPages = new Map();
         let currentMainPage = null;
         let activeResultId = null;
-        
+        let isFirstSearch = true;
+
         const BUFFER_PAGES = 10;
         const LOAD_MORE_THRESHOLD = 15;
         const MAX_CACHED_PAGES = 60;
@@ -415,23 +416,25 @@
         function jumpToPage() {
             const pageNum = parseInt(document.getElementById('pageInput').value);
             if (!pageNum || pageNum < 1) return;
-            
+
             currentMainPage = pageNum;
             viewerEmpty.style.display = 'none';
-            
+
             const startPage = Math.max(1, pageNum - BUFFER_PAGES);
             const endPage = pageNum + BUFFER_PAGES;
-            
+
             renderPageRange(startPage, endPage, pageNum);
             setupIntersectionObserver();
-            
-            setTimeout(() => {
-                const target = document.querySelector(`.page-wrapper[data-page="${pageNum}"]`);
-                if (target) {
-                    target.scrollIntoView({behavior: 'smooth', block: 'center'});
-                    target.classList.add('highlighted');
-                }
-            }, 100);
+
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    const target = document.querySelector(`.page-wrapper[data-page="${pageNum}"]`);
+                    if (target) {
+                        viewer.scrollTop = target.offsetTop - viewer.offsetTop - (viewer.clientHeight / 2) + (target.offsetHeight / 2);
+                        target.classList.add('highlighted');
+                    }
+                });
+            });
         }
         
         searchInput.addEventListener('input', debounce(doSearch, 500));
@@ -488,26 +491,31 @@
         function showPages(mainPage, resultIdx) {
             currentMainPage = mainPage;
             activeResultId = resultIdx;
-            
+
             document.querySelectorAll('.result-item').forEach((el, idx) => {
                 el.classList.toggle('active', idx === resultIdx);
             });
-            
+
             viewerEmpty.style.display = 'none';
-            
+
             const startPage = Math.max(1, mainPage - BUFFER_PAGES);
             const endPage = mainPage + BUFFER_PAGES;
-            
+
             renderPageRange(startPage, endPage, mainPage);
-            
+
             setupIntersectionObserver();
-            
-            setTimeout(() => {
-                const highlighted = document.querySelector('.page-wrapper.highlighted');
-                if (highlighted) {
-                    highlighted.scrollIntoView({behavior: 'smooth', block: 'center'});
-                }
-            }, 100);
+
+            // Wait for images to start loading and layout to stabilize
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    const highlighted = document.querySelector('.page-wrapper.highlighted');
+                    if (highlighted) {
+                        // Use instant scroll on first load to avoid weird scrolling
+                        viewer.scrollTop = highlighted.offsetTop - viewer.offsetTop - (viewer.clientHeight / 2) + (highlighted.offsetHeight / 2);
+                    }
+                    isFirstSearch = false;
+                });
+            });
         }
         
         function renderPageRange(startPage, endPage, highlightPage) {
@@ -648,17 +656,20 @@
         
         function getCurrentPage() {
             const pages = Array.from(loadedPages.keys()).sort((a, b) => a - b);
-            const viewportCenter = viewer.scrollTop + viewer.clientHeight / 2;
+            
+            // Find the page closest to the center of the viewport
+            const viewerCenter = viewer.scrollTop + viewer.clientHeight / 2;
             
             let closestPage = pages[0];
             let minDist = Infinity;
             
             pages.forEach(page => {
                 const el = loadedPages.get(page);
-                const rect = el.getBoundingClientRect();
-                const viewerRect = viewer.getBoundingClientRect();
-                const elCenter = rect.top - viewerRect.top + rect.height / 2;
-                const dist = Math.abs(elCenter - viewer.clientHeight / 2);
+                if (!el || !el.offsetParent) return; // Skip hidden elements
+                
+                const elTop = el.offsetTop;
+                const elCenter = elTop + el.offsetHeight / 2;
+                const dist = Math.abs(elCenter - viewerCenter);
                 
                 if (dist < minDist) {
                     minDist = dist;
