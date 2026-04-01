@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from app.search.simple_search import create_search_engine, load_index
 from app.processors.pdf_to_images import convert_pdf_to_images
+from app.models.answer_validator import initialize_validator, get_validator
 
 
 app = FastAPI(title="Дискретная математика - RAG")
@@ -20,6 +21,7 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 search_engine = None
 sections_index = []
+answer_validator = None
 
 
 class SearchRequest(BaseModel):
@@ -38,29 +40,34 @@ class SimulatorRequest(BaseModel):
 
 @app.on_event("startup")
 async def startup_event():
-    global search_engine, sections_index
-    
+    global search_engine, sections_index, answer_validator
+
     print("Initializing RAG system...")
-    
+
     pages_dir = BASE_DIR / "data" / "pages"
     index_path = BASE_DIR / "data" / "sections_index.json"
-    
+
     if not pages_dir.exists() or len(list(pages_dir.glob("*.png"))) < 100:
         print("Converting PDF to images...")
         convert_pdf_to_images(str(BASE_DIR / "books" / "DM2024.pdf"), str(pages_dir), dpi=150)
-    
+
     if not index_path.exists():
         print("Building sections index...")
         from app.search.pdf_indexer import PDFIndexer
         indexer = PDFIndexer(str(BASE_DIR / "books" / "DM2024.pdf"))
         indexer.extract_sections()
         indexer.save(str(index_path))
-    
+
     sections_index = load_index(str(index_path))
     print(f"Loaded {len(sections_index)} sections")
-    
+
     search_engine = create_search_engine(sections_index)
     print("Search engine ready!")
+
+    # Initialize answer validator with semantic similarity
+    print("Loading answer validator model...")
+    answer_validator = initialize_validator()
+    print("Answer validator ready!")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -195,34 +202,88 @@ async def validate_answer(req: ValidateRequest):
     page = section['page']
     answer_pages = get_page_range(page)
 
-    # Keyword matching: check if answer contains keywords from the section
-    answer_lower = req.answer.lower()
+    # Build reference text from section content
+    section_title = section['title']
     section_keywords = section.get('keywords', [])
-    title_words = section['title'].lower().split()
     
-    # Count how many keywords/title words are in the answer
+    # Use semantic similarity via embeddings
+    is_correct = False
+    similarity_score = 0.0
+    confidence = "unknown"
     matched_keywords = []
-    for keyword in section_keywords:
-        if keyword.lower() in answer_lower:
-            matched_keywords.append(keyword)
     
-    for title_word in title_words:
-        if len(title_word) > 3 and title_word not in matched_keywords and title_word in answer_lower:
-            matched_keywords.append(title_word)
-    
-    # Calculate match ratio
-    total_terms = len(section_keywords) + len([w for w in title_words if len(w) > 3])
-    match_count = len(matched_keywords)
-    
-    # Consider correct if at least 30% of keywords matched or answer is substantial (20+ chars) with some matches
-    is_correct = (total_terms > 0 and match_count / total_terms >= 0.3) or (len(req.answer) >= 20 and match_count >= 1)
+    if answer_validator:
+        try:
+            # Build reference text from title + keywords
+            reference_text = f"{section_title} {' '.join(section_keywords[:5])}"
+            
+            is_correct, similarity_score, details = answer_validator.validate_answer(
+                student_answer=req.answer,
+                reference_text=reference_text,
+                section_title=section_title,
+                keywords=section_keywords
+            )
+            confidence = details.get('confidence', 'unknown')
+            
+            # Also check keyword matches for feedback
+            answer_lower = req.answer.lower()
+            for keyword in section_keywords:
+                if keyword.lower() in answer_lower:
+                    matched_keywords.append(keyword)
+                    
+        except Exception as e:
+            print(f"Validation error: {e}")
+            # Fallback to keyword matching if embedding fails
+            answer_lower = req.answer.lower()
+            for keyword in section_keywords:
+                if keyword.lower() in answer_lower:
+                    matched_keywords.append(keyword)
+            
+            title_words = section_title.lower().split()
+            for title_word in title_words:
+                if len(title_word) > 3 and title_word not in matched_keywords and title_word in answer_lower:
+                    matched_keywords.append(title_word)
+            
+            total_terms = len(section_keywords) + len([w for w in title_words if len(w) > 3])
+            match_count = len(matched_keywords)
+            is_correct = (total_terms > 0 and match_count / total_terms >= 0.3) or (len(req.answer) >= 20 and match_count >= 1)
+            similarity_score = match_count / max(total_terms, 1)
+            confidence = "fallback"
+    else:
+        # Fallback if validator not initialized
+        answer_lower = req.answer.lower()
+        for keyword in section_keywords:
+            if keyword.lower() in answer_lower:
+                matched_keywords.append(keyword)
+        
+        title_words = section_title.lower().split()
+        for title_word in title_words:
+            if len(title_word) > 3 and title_word not in matched_keywords and title_word in answer_lower:
+                matched_keywords.append(title_word)
+        
+        total_terms = len(section_keywords) + len([w for w in title_words if len(w) > 3])
+        match_count = len(matched_keywords)
+        is_correct = (total_terms > 0 and match_count / total_terms >= 0.3) or (len(req.answer) >= 20 and match_count >= 1)
+        similarity_score = match_count / max(total_terms, 1)
+
+    # Generate feedback based on confidence
+    if confidence == "high":
+        feedback = "Отличный ответ! Вы хорошо усвоили материал."
+    elif confidence == "medium":
+        feedback = "Хороший ответ! Но можно ответить полнее."
+    elif confidence == "low":
+        feedback = "Ответ частично верный, но стоит повторить материал."
+    else:
+        feedback = "Попробуйте еще раз изучить материал."
 
     return JSONResponse({
         "valid": True,
         "correct": is_correct,
-        "feedback": "Отличный ответ!" if is_correct else "Попробуйте еще раз изучить материал.",
-        "correct_answer": section['title'],
-        "section_title": section['title'],
+        "feedback": feedback,
+        "correct_answer": section_title,
+        "section_title": section_title,
+        "similarity_score": similarity_score,
+        "confidence": confidence,
         "matched_keywords": matched_keywords,
         "answer_pages": answer_pages,
         "answer_thumbnails": [f"/data/pages/page_{p:04d}.png" for p in answer_pages]
