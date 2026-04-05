@@ -1,4 +1,4 @@
-# Build artifacts - don't commit
+# Build artifacts
 **/__pycache__/
 *.pyc
 *.pyo

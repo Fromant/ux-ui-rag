@@ -104,7 +104,7 @@ class AnswerValidator:
         }
         
         return is_correct, similarity, details
-    
+
     def _get_confidence_level(self, similarity: float) -> str:
         """Get confidence level based on similarity score."""
         if similarity >= 0.5:
@@ -115,83 +115,10 @@ class AnswerValidator:
             return "low"
         else:
             return "very_low"
-    
-    def batch_validate(
-        self,
-        student_answers: List[str],
-        reference_text: str,
-        section_title: str,
-        keywords: List[str] = None
-    ) -> List[Tuple[bool, float, dict]]:
-        """
-        Validate multiple answers at once (more efficient).
-        
-        Args:
-            student_answers: List of student answer texts
-            reference_text: Reference text from the textbook section
-            section_title: Title of the section
-            keywords: Optional list of keywords from the section
-            
-        Returns:
-            List of tuples (is_correct, similarity_score, details_dict)
-        """
-        if self.model is None:
-            self.load_model()
-        
-        # Build reference text
-        reference_parts = [section_title]
-        if keywords:
-            reference_parts.extend(keywords[:5])
-        reference_parts.append(reference_text)
-        full_reference = " ".join(reference_parts)
-        
-        # Encode all answers at once
-        with torch.no_grad():
-            answer_embeddings = self.model.encode(
-                student_answers,
-                convert_to_tensor=True,
-                show_progress_bar=False,
-                batch_size=32
-            )
-            reference_embedding = self.model.encode(
-                full_reference,
-                convert_to_tensor=True,
-                show_progress_bar=False
-            )
-        
-        # Calculate similarities
-        similarities = util.cos_sim(answer_embeddings, reference_embedding).cpu().numpy().flatten()
-        
-        results = []
-        for i, sim in enumerate(similarities):
-            is_correct = sim >= 0.35
-            details = {
-                "similarity_score": round(float(sim), 4),
-                "threshold": 0.35,
-                "confidence": self._get_confidence_level(sim),
-                "answer_length": len(student_answers[i])
-            }
-            results.append((is_correct, sim, details))
-        
-        return results
 
 
-# Singleton instance for the application
-_validator: Optional[AnswerValidator] = None
-
-
-def get_validator() -> AnswerValidator:
-    """Get or create the singleton AnswerValidator instance."""
-    global _validator
-    if _validator is None:
-        _validator = AnswerValidator()
-        _validator.load_model()
-    return _validator
-
-
-def initialize_validator() -> AnswerValidator:
+def initialize_validator():
     """Initialize the validator (call during app startup)."""
-    global _validator
-    _validator = AnswerValidator()
-    _validator.load_model()
-    return _validator
+    validator = AnswerValidator()
+    validator.load_model()
+    return validator

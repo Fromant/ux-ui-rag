@@ -1,17 +1,14 @@
-import json
-import os
 import random
 from pathlib import Path
 from typing import Optional
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
 from app.search.simple_search import create_search_engine, load_index
 from app.processors.pdf_to_images import convert_pdf_to_images
-from app.models.answer_validator import initialize_validator, get_validator
+from app.models.answer_validator import initialize_validator
 
 
 app = FastAPI(title="Дискретная математика - RAG")
@@ -85,8 +82,7 @@ async def get_page_image(filename: str):
     img_path = BASE_DIR / "data" / "pages" / filename
     if not img_path.exists():
         raise HTTPException(status_code=404, detail="Image not found")
-    
-    from fastapi.responses import FileResponse
+
     return FileResponse(img_path, media_type="image/png")
 
 

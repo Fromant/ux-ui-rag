@@ -66,7 +66,6 @@ pestr-rag/
       pdf_to_images.py   # Конвертация PDF → PNG
     models/
       answer_validator.py  # Семантическая проверка ответов
-      simulator_simple.py  # (не используется)
   templates/
     index.html             # UI поиска
     simulator.html         # UI тренажёра

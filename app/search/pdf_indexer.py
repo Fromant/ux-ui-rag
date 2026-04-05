@@ -1,7 +1,5 @@
 import re
 import json
-import os
-from pathlib import Path
 from typing import List, Dict, Any, Optional
 import fitz
 
@@ -245,13 +243,3 @@ class PDFIndexer:
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(self.sections, f, ensure_ascii=False, indent=2)
         print(f"Saved {len(self.sections)} sections to {output_path}")
-
-
-def main():
-    indexer = PDFIndexer('books/DM2024.pdf')
-    sections = indexer.extract_sections()
-    indexer.save('data/sections_index.json')
-
-
-if __name__ == '__main__':
-    main()
