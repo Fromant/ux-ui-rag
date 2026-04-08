@@ -1,12 +1,10 @@
 """
 Answer validator using semantic similarity and keyword matching.
 
-Validates student answers against:
-1. Reference answer (from LLM-generated questions)
-2. Section keywords (from subject index + red text)
-3. Section title
-
-Combines multiple scoring strategies for robust validation.
+Validates student answers against reference answers using:
+1. Semantic similarity (sentence transformers)
+2. Keyword overlap
+3. Question relevance
 """
 
 from typing import List, Tuple, Dict, Optional
@@ -16,10 +14,7 @@ import re
 
 
 class AnswerValidator:
-    """
-    Validates student answers using semantic similarity + keyword matching.
-    Uses multilingual sentence transformers for Russian language support.
-    """
+    """Validates student answers using semantic similarity + keyword matching."""
 
     MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
 
@@ -55,11 +50,6 @@ class AnswerValidator:
         """
         Validate a student's answer.
 
-        Uses multiple strategies:
-        1. Semantic similarity between student answer and reference answer
-        2. Keyword overlap (does student answer contain key terms?)
-        3. Question relevance (does answer address the question?)
-
         Args:
             student_answer: Student's answer text
             question: The question that was asked
@@ -74,43 +64,27 @@ class AnswerValidator:
             self.load_model()
 
         # Strategy 1: Semantic similarity (student vs reference)
-        semantic_score = self._semantic_similarity(
-            student_answer, reference_answer
-        )
+        semantic_score = self._semantic_similarity(student_answer, reference_answer)
 
         # Strategy 2: Keyword matching
-        keyword_score = self._keyword_overlap(
-            student_answer, keywords or []
-        )
+        keyword_score = self._keyword_overlap(student_answer, keywords or [])
 
         # Strategy 3: Question relevance
-        relevance_score = self._question_relevance(
-            student_answer, question
-        )
+        relevance_score = self._question_relevance(student_answer, question)
 
         # Combined score (weighted)
-        # Semantic: 50%, Keywords: 30%, Relevance: 20%
-        combined_score = (
-            semantic_score * 0.5 +
-            keyword_score * 0.3 +
-            relevance_score * 0.2
-        )
+        combined_score = semantic_score * 0.5 + keyword_score * 0.3 + relevance_score * 0.2
 
         # Determine correctness
         is_correct = combined_score >= 0.35
 
-        # Additional checks
-        answer_length = len(student_answer.strip())
-        too_short = answer_length < 10
-
         # If answer is too short, require higher score
-        if too_short:
+        answer_length = len(student_answer.strip())
+        if answer_length < 10:
             is_correct = combined_score >= 0.5
 
         # Find matched keywords for feedback
-        matched_keywords = self._get_matched_keywords(
-            student_answer, keywords or []
-        )
+        matched_keywords = self._get_matched_keywords(student_answer, keywords or [])
 
         details = {
             "combined_score": round(combined_score, 4),
@@ -120,7 +94,6 @@ class AnswerValidator:
             "confidence": self._get_confidence_level(combined_score),
             "matched_keywords": matched_keywords,
             "answer_length": answer_length,
-            "too_short": too_short,
         }
 
         return is_correct, combined_score, details
@@ -131,23 +104,13 @@ class AnswerValidator:
             return 0.0
 
         with torch.no_grad():
-            embedding1 = self.model.encode(
-                text1, convert_to_tensor=True, show_progress_bar=False
-            )
-            embedding2 = self.model.encode(
-                text2, convert_to_tensor=True, show_progress_bar=False
-            )
+            embedding1 = self.model.encode(text1, convert_to_tensor=True, show_progress_bar=False)
+            embedding2 = self.model.encode(text2, convert_to_tensor=True, show_progress_bar=False)
 
         return util.cos_sim(embedding1, embedding2).item()
 
-    def _keyword_overlap(
-        self, student_answer: str, keywords: List[str]
-    ) -> float:
-        """
-        Calculate keyword overlap score.
-
-        Returns fraction of keywords found in student answer.
-        """
+    def _keyword_overlap(self, student_answer: str, keywords: List[str]) -> float:
+        """Calculate keyword overlap score."""
         if not keywords:
             return 0.5  # Neutral if no keywords
 
@@ -157,10 +120,7 @@ class AnswerValidator:
             if kw.lower() in answer_lower or self._word_stem(kw).lower() in answer_lower
         )
 
-        # Score based on coverage
         coverage = matched / len(keywords)
-
-        # Scale: 0 keywords = 0, 30% = 0.3, 60%+ = 1.0
         return min(1.0, coverage * 1.5)
 
     def _question_relevance(self, student_answer: str, question: str) -> float:
@@ -168,22 +128,14 @@ class AnswerValidator:
         if not question or not student_answer:
             return 0.0
 
-        # Extract key terms from question
         question_terms = re.findall(r'[А-Яа-яёЁA-Za-z]{4,}', question)
-
-        # Check if answer contains question terms
         answer_lower = student_answer.lower()
-        matched_terms = sum(
-            1 for term in question_terms
-            if term.lower() in answer_lower
-        )
+        matched_terms = sum(1 for term in question_terms if term.lower() in answer_lower)
 
-        if question_terms:
-            return matched_terms / len(question_terms)
-        return 0.5
+        return matched_terms / len(question_terms) if question_terms else 0.5
 
     def _word_stem(self, word: str) -> str:
-        """Simple word stemming (removes common Russian endings)."""
+        """Simple word stemming for Russian."""
         endings = ['ия', 'ие', 'ый', 'ой', 'ая', 'ое', 'ые',
                    'ого', 'ему', 'ыми', 'ими', 'ться', 'ется']
 
@@ -194,19 +146,13 @@ class AnswerValidator:
 
         return word_lower
 
-    def _get_matched_keywords(
-        self, student_answer: str, keywords: List[str]
-    ) -> List[str]:
+    def _get_matched_keywords(self, student_answer: str, keywords: List[str]) -> List[str]:
         """Get list of keywords found in student answer."""
         answer_lower = student_answer.lower()
-        matched = []
-
-        for kw in keywords:
-            kw_lower = kw.lower()
-            if kw_lower in answer_lower or self._word_stem(kw).lower() in answer_lower:
-                matched.append(kw)
-
-        return matched
+        return [
+            kw for kw in keywords
+            if kw.lower() in answer_lower or self._word_stem(kw).lower() in answer_lower
+        ]
 
     def _get_confidence_level(self, score: float) -> str:
         """Get confidence level based on combined score."""

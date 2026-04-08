@@ -163,41 +163,18 @@ async def next_question(req: SimulatorRequest):
         return JSONResponse({"error": "No questions available"}, status_code=404)
 
     section = random.choice(available)
-
-    # Use pre-generated questions if available (from OpenRouter)
     quiz_questions = section.get('quiz_questions', [])
 
+    # Use pre-generated question from index
     if quiz_questions:
-        # Use a random pre-generated question
         question_data = random.choice(quiz_questions)
         question_text = question_data.get('question', f"Что вы знаете о \"{section['title']}\"?")
         question_type = question_data.get('type', 'definition')
         question_difficulty = question_data.get('difficulty', 'medium')
     else:
-        # Fallback to template-based questions
+        # Fallback if no questions in index
         title = section['title']
-        question_templates = [
-            f"Что вы знаете о \"{title}\"?",
-            f"Расскажите о \"{title}\".",
-            f"Дайте определение: {title}.",
-            f"Объясните понятие \"{title}\".",
-        ]
-
-        if any(word in title.lower() for word in ['определение', 'свойство', 'признак', 'критерий', 'теорема']):
-            question_templates = [
-                f"Сформулируйте: {title}.",
-                f"Что утверждает {title.lower()}?",
-                f"Объясните: {title}.",
-            ]
-
-        if any(word in title.lower() for word in ['алгоритм', 'метод', 'способ', 'процедура']):
-            question_templates = [
-                f"Опишите алгоритм: {title}.",
-                f"В чём суть метода \"{title}\"?",
-                f"Как работает {title.lower()}?",
-            ]
-
-        question_text = random.choice(question_templates)
+        question_text = f"Что вы знаете о \"{title}\"?"
         question_type = 'definition'
         question_difficulty = 'medium'
 
@@ -232,31 +209,30 @@ async def validate_answer(req: ValidateRequest):
             "valid": True,
             "correct": False,
             "feedback": "Раздел не найден",
-            "correct_answer": ""
+            "reference_answer": ""
         })
 
     page = section['page']
     answer_pages = get_page_range(page)
 
-    # Get question data if available
     section_title = section['title']
     section_keywords = section.get('keywords', [])
-    
-    # Try to find the question in quiz_questions
-    reference_answer = ""
+
+    # Find the question and get reference answer
     question_text = req.question_text or ""
-    
+    reference_answer = ""
+
     if section.get('quiz_questions'):
         for q in section['quiz_questions']:
             if q.get('question') == question_text:
                 reference_answer = q.get('answer', '')
                 break
 
-    # Build reference from answer + keywords if no reference answer
+    # Fallback if no reference answer
     if not reference_answer:
         reference_answer = f"{section_title}. Ключевые понятия: {', '.join(section_keywords[:5])}"
 
-    # Use semantic similarity via embeddings
+    # Validate answer
     is_correct = False
     similarity_score = 0.0
     confidence = "unknown"
@@ -273,43 +249,23 @@ async def validate_answer(req: ValidateRequest):
             )
             confidence = details.get('confidence', 'unknown')
             matched_keywords = details.get('matched_keywords', [])
-
         except Exception as e:
             print(f"Validation error: {e}")
-            # Fallback to keyword matching
-            answer_lower = req.answer.lower()
-            for keyword in section_keywords:
-                if keyword.lower() in answer_lower:
-                    matched_keywords.append(keyword)
-
-            title_words = section_title.lower().split()
-            for title_word in title_words:
-                if len(title_word) > 3 and title_word not in matched_keywords and title_word in answer_lower:
-                    matched_keywords.append(title_word)
-
-            total_terms = len(section_keywords) + len([w for w in title_words if len(w) > 3])
-            match_count = len(matched_keywords)
-            is_correct = (total_terms > 0 and match_count / total_terms >= 0.3) or (len(req.answer) >= 20 and match_count >= 1)
-            similarity_score = match_count / max(total_terms, 1)
-            confidence = "fallback"
+            confidence = "error"
     else:
-        # Fallback if validator not initialized
+        # Fallback to keyword matching if validator not loaded
         answer_lower = req.answer.lower()
-        for keyword in section_keywords:
-            if keyword.lower() in answer_lower:
-                matched_keywords.append(keyword)
+        matched_keywords = [kw for kw in section_keywords if kw.lower() in answer_lower]
+        title_words = [w for w in section_title.lower().split() if len(w) > 3]
+        matched_keywords.extend([w for w in title_words if w in answer_lower and w not in matched_keywords])
 
-        title_words = section_title.lower().split()
-        for title_word in title_words:
-            if len(title_word) > 3 and title_word not in matched_keywords and title_word in answer_lower:
-                matched_keywords.append(title_word)
-
-        total_terms = len(section_keywords) + len([w for w in title_words if len(w) > 3])
+        total_terms = len(section_keywords) + len(title_words)
         match_count = len(matched_keywords)
-        is_correct = (total_terms > 0 and match_count / total_terms >= 0.3) or (len(req.answer) >= 20 and match_count >= 1)
+        is_correct = total_terms > 0 and match_count / total_terms >= 0.3
         similarity_score = match_count / max(total_terms, 1)
+        confidence = "fallback"
 
-    # Generate feedback based on confidence
+    # Generate feedback
     if confidence == "high":
         feedback = "Отличный ответ! Вы хорошо усвоили материал."
     elif confidence == "medium":

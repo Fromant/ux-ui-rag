@@ -8,7 +8,6 @@ Runs completely offline - no LLM required!
 Usage:
     python build_keywords.py --pdf books/DM2024.pdf
     python build_keywords.py --pdf books/DM2024.pdf --output data/sections_index.json
-    python build_keywords.py --pdf books/DM2024.pdf --skip-questions
 """
 
 import argparse
