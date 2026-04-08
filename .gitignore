@@ -16,4 +16,9 @@ app.log
 # Docker
 .dockerignore
 
+# Environment files (SECURITY - never commit)
+.env
+.env.local
+.env.production
+
 

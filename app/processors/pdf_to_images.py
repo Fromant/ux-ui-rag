@@ -6,11 +6,12 @@ def convert_pdf_to_images(pdf_path: str, output_dir: str, dpi: int = 150):
     os.makedirs(output_dir, exist_ok=True)
 
     doc = fitz.open(pdf_path)
-    print(f"Converting {len(doc)} pages to images...")
+    total_pages = len(doc)
+    print(f"Converting {total_pages} pages to images...")
 
-    for page_num in range(len(doc)):
+    for page_num in range(total_pages):
         if page_num % 100 == 0:
-            print(f"Processing page {page_num + 1}/{len(doc)}")
+            print(f"Processing page {page_num + 1}/{total_pages}")
 
         page = doc.load_page(page_num)
 
@@ -22,4 +23,4 @@ def convert_pdf_to_images(pdf_path: str, output_dir: str, dpi: int = 150):
         pix.save(img_path)
 
     doc.close()
-    print(f"Saved {len(doc)} images to {output_dir}")
+    print(f"Saved {total_pages} images to {output_dir}")

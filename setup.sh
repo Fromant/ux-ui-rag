@@ -9,29 +9,17 @@ if [ ! -f "books/DM2024.pdf" ]; then
     exit 1
 fi
 
+echo ""
 echo "Step 1: Creating directories..."
 mkdir -p data/pages
 
-echo "Step 2: Converting PDF to images (this may take a few minutes)..."
-python3 -c "
-import sys
-sys.path.insert(0, '.')
-from app.processors.pdf_to_images import convert_pdf_to_images
-convert_pdf_to_images('books/DM2024.pdf', 'data/pages', dpi=150)
-print('PDF conversion complete!')
-"
-
-echo "Step 3: Building search index..."
-python3 -c "
-import sys
-sys.path.insert(0, '.')
-from app.search.pdf_indexer import PDFIndexer
-indexer = PDFIndexer('books/DM2024.pdf')
-sections = indexer.extract_sections()
-indexer.save('data/sections_index.json')
-print(f'Index created with {len(sections)} sections')
-"
+echo ""
+echo "Step 2: Building index with keyword extraction and question generation..."
+python3 build_keywords.py --pdf books/DM2024.pdf --output data/sections_index.json
 
 echo ""
 echo "=== Setup complete! ==="
-echo "Now run: docker build -t pestr-rag . && docker run -p 8000:8000 pestr-rag"
+echo "Generated data is available in ./data folder"
+echo ""
+echo "To start the application:"
+echo "  docker compose up -d"

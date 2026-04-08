@@ -1,0 +1,35 @@
+services:
+  rag-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: dm-rag-system
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount data folder to access pre-built index and pages
+      - ./data:/app/data:ro
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+
+  # Build service - generates index and page images
+  rag-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    container_name: dm-rag-builder
+    volumes:
+      - ./data:/app/data
+      - ./books:/app/books:ro
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    profiles:
+      - build
+    command: python build_index.py --pdf books/DM2024.pdf --output data/sections_index.json --pages-dir data/pages

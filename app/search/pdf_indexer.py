@@ -13,46 +13,67 @@ class PDFIndexer:
         """Clean and validate section title."""
         if not title:
             return None
-        
+
         # Remove part indicators like (2/2), (3/3), etc. (including incomplete ones)
         title = re.sub(r'\s*\(\d+/\d*\s*$', '', title)
         title = re.sub(r'\s*\(\d+/\d+\)\s*', '', title)
-        
+
         # Remove trailing punctuation that indicates sentence, not title
         title = title.rstrip('.!?;:')
-        
+
         # Remove trailing hyphenation (incomplete words)
         title = re.sub(r'-\s*$', '', title)
         title = re.sub(r'-\s*\n', ' ', title)  # Join hyphenated line breaks
-        
+
         # Remove content after colon if it looks like a subtitle or explanation
         if ':' in title:
             parts = title.split(':')
             if len(parts[0].strip()) > 3 and len(parts[0].strip()) < 100:
                 title = parts[0].strip()
-        
+
         # Remove content after comma if title is already long enough
         if ',' in title and len(title) > 60:
             parts = title.split(',')
             if len(parts[0].strip()) > 3:
                 title = parts[0].strip()
-        
+
         # Remove leading/trailing whitespace and normalize internal spaces
         title = ' '.join(title.split())
-        
-        # Must start with uppercase letter
-        if not title[0].isupper():
+
+        # Must start with uppercase letter or digit (for numbered sections)
+        if not (title[0].isupper() or title[0].isdigit()):
             return None
-        
+
         # Filter out bad titles
         # 1. Too short after cleaning
         if len(title) < 3:
             return None
-        
+
         # 2. Too long (likely captured too much text)
         if len(title) > 100:
             return None
-        
+
+        # 2b. Check for truncated words - Russian words ending mid-stem
+        # Common Russian word stems - if title ends with these, it's likely truncated
+        truncated_patterns = [
+            r'определе$', r'отноше$', r'вычисле$', r'множе$', r'граф$',
+            r'алгоритм$', r'свойств$', r'функц$', r'матриц$', r'вероятност$',
+            r'дерев$', r'разбиен$', r'покрыт$', r'композ$', r'бин$',
+        ]
+        for pattern in truncated_patterns:
+            if re.search(pattern, title.lower()):
+                return None
+
+        # General check: if title ends with 2-3 Cyrillic chars, might be truncated
+        if re.search(r'[а-яё]{2,3}$', title.lower()):
+            words = title.split()
+            if words and len(words[-1]) < 8:
+                # Check if it's a common short word or looks truncated
+                last_word = words[-1].lower()
+                # Short complete words are ok, but not truncated stems
+                if len(last_word) <= 4 and not any(last_word.endswith(s) for s in ['ия', 'ие', 'ый', 'ой', 'ая', 'ое']):
+                    return None
+
         # 3. Ends with common sentence fragments
         bad_endings = [
             'и далее', 'и т.д', 'и т.п', 'см.', 'см также',
@@ -66,7 +87,7 @@ class PDFIndexer:
         for bad in bad_endings:
             if title_lower.endswith(bad):
                 return None
-        
+
         # 3b. Starts with sentence-like patterns
         bad_starts = [
             'в приведённом', 'в данном', 'в этом', 'на самом деле',
@@ -77,7 +98,7 @@ class PDFIndexer:
         for bad in bad_starts:
             if title_lower.startswith(bad):
                 return None
-        
+
         # 3c. Contains verb patterns that indicate sentence not title
         sentence_patterns = [
             r'требуется больше', r'не имеет значения', r'является',
@@ -86,7 +107,7 @@ class PDFIndexer:
         for pattern in sentence_patterns:
             if re.search(pattern, title_lower):
                 return None
-        
+
         # 4. Contains obvious non-title patterns
         bad_patterns = [
             r'^и\s+\w',  # Starts with "и "
@@ -107,54 +128,36 @@ class PDFIndexer:
         for pattern in bad_patterns:
             if re.search(pattern, title):
                 return None
-        
+
         # 5. Has incomplete words (ending with hyphen mid-word or truncated)
         if re.search(r'\w-\s*$', title):
             return None
-        
-        # Check for truncated words at end of title
-        # Russian words typically don't end in certain consonant clusters or specific letters
-        truncated_endings = (
-            'е', 'и', 'о', 'ы', 'ю', 'я',  # vowels that indicate cut-off
-            'ле', 'ре', 'се', 'те', 'че', 'ше', 'ще',  # consonant + е
-            'ли', 'ри', 'си', 'ти', 'чи', 'ши', 'щи',  # consonant + и
-        )
-        if title.endswith(truncated_endings) and len(title) < 30:
-            # Check if last word looks truncated
-            words = title.split()
-            if words:
-                last_word = words[-1].lower()
-                # If last word is short and ends with vowel, likely truncated
-                if len(last_word) < 8 and last_word.endswith(('е', 'и', 'о', 'ы', 'ю', 'я')):
-                    # Additional check: if it doesn't look like a complete Russian word
-                    if not any(last_word.endswith(suffix) for suffix in ['ие', 'ием', 'ию', 'ия', 'иям', 'иях']):
-                        return None
-        
+
         # 6. Is just a name without context (likely a random capture)
         # Single word titles that are all caps or surname pattern
         if ' ' not in title:
             # Check if it's all uppercase (like "РИМАН", "ФЛОЙД")
             if title.isupper() and len(title) < 15:
                 return None
-            
+
             # Check if it matches surname pattern
             if re.match(r'^[А-ЯЁ][а-яё]+$', title):
-                surnames = ['риман', 'галуа', 'бине', 'капрекар', 'флойд', 'дейкстра', 
+                surnames = ['риман', 'галуа', 'бине', 'капрекар', 'флойд', 'дейкстра',
                            'карно', 'хейкен', 'варшалл', 'эйлер', 'бернсайд', 'кэли',
                            'пуанкаре', 'шредер', 'кантор', 'дедекинд', 'хаусдорф']
                 if title.lower() in surnames:
                     return None
-        
+
         # 6b. Single generic word titles (too vague)
-        generic_single = ['вычисление', 'определение', 'понятие', 'раздел', 'часть', 'тема', 
+        generic_single = ['вычисление', 'определение', 'понятие', 'раздел', 'часть', 'тема',
                          'пример', 'следствие', 'замечание', 'утверждение', 'предложение']
         if title.lower() in generic_single and ' ' not in title:
             return None
-        
+
         # 7. Contains newline artifacts
         if '\n' in title or '\r' in title:
             return None
-            
+
         return title[:100]
 
     def extract_sections(self):
@@ -162,10 +165,11 @@ class PDFIndexer:
         doc = fitz.open(self.pdf_path)
         print(f"PDF has {len(doc)} pages")
 
-        # Pattern: section number followed by title on the same line
-        # Title starts with capital letter, stops at newline or certain punctuation
+        # Pattern: section number followed by title
+        # Title starts with capital letter, stops at newline
+        # More permissive to capture full titles
         section_pattern = re.compile(
-            r'(\d+\.\d+(?:\.\d+)?)\.?\s+([А-Яа-яёЁA-Z][^\n\r.!?:;]{2,150})',
+            r'(\d+\.\d+(?:\.\d+)?)\.?\s+([А-Яа-яёЁA-Z][^\n\r]{2,200})',
             re.MULTILINE
         )
 
@@ -184,11 +188,20 @@ class PDFIndexer:
             for match in matches:
                 section_num = match.group(1)
                 raw_title = match.group(2).strip()
-                
+
                 # Clean and validate the title
                 section_title = self.clean_title(raw_title)
                 
                 if not section_title:
+                    continue
+
+                # Validate section number format - should be like 1.2, 1.2.3, etc.
+                # Reject numbers with too many digits or weird formats
+                sec_parts = section_num.split('.')
+                if not all(p.isdigit() and 1 <= int(p) <= 999 for p in sec_parts):
+                    continue
+                # Reject if first part is 0 (like 0.57722)
+                if sec_parts[0] == '0':
                     continue
 
                 keywords = self._extract_keywords(text[:2000])
@@ -231,11 +244,19 @@ class PDFIndexer:
             'также', 'где', 'когда', 'этом', 'этой', 'другой', 'только', 'было', 'будет',
             'the', 'and', 'for', 'are', 'from', 'that', 'with', 'this', 'have', 'has'
         }
+        # Filter out programming code artifacts
+        code_keywords = {
+            'def', 'yield', 'end', 'while', 'if', 'else', 'elif', 'return', 'import',
+            'from', 'class', 'func', 'let', 'var', 'const', 'function', 'then', 'do',
+            'loop', 'for', 'switch', 'case', 'break', 'continue', 'try', 'catch',
+            'except', 'finally', 'throw', 'new', 'delete', 'print', 'input', 'open'
+        }
+        
         for word in words:
             word_lower = word.lower()
-            if word_lower not in stop_words:
+            if word_lower not in stop_words and word_lower not in code_keywords:
                 word_freq[word_lower] = word_freq.get(word_lower, 0) + 1
-        
+
         sorted_words = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)
         return [w[0] for w in sorted_words[:10]]
     
